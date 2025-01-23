@@ -1,0 +1,11 @@
+resolveVanityUrl:
+    sub:
+      - vanityurl
+      - test2
+    pub:
+      - SGNOME/Steam/steamid
+getOwnedGames:
+    sub:
+      - SNGOME/Steam/steamid
+    pub:
+      - SGNOME/Steam/OwnedGames

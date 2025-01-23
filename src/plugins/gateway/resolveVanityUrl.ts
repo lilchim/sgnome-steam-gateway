@@ -1,6 +1,9 @@
 import { FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
 import { default as Redis } from 'ioredis';  // Importing ioredis
+import yaml from 'js-yaml';
+import fs from 'fs';
+import { ITopicMapping } from '../../interfaces/ITopicMapping.js';
 
 // Request Payload Interfaces
 interface IResolveVanityUrl {
@@ -12,7 +15,19 @@ interface IResolveVanityUrlResult {
 }
 
 export default fp(async function (fastify: FastifyInstance) {
-    const topicsTest = ['vanityurl', 'test2'];
+    const SERVICE_NAME = "Service::resolveVanityUrl";
+    let resolveVanityUrlTopicMap: ITopicMapping = { sub: ['vanityurl'], pub: ['steamid'] } as ITopicMapping;
+    try {
+        const { resolveVanityUrl }: any = await yaml.load(fs.readFileSync('./config/topic-map.yml', 'utf8'));
+        console.log(`${SERVICE_NAME} loaded topic map from yml`);
+        resolveVanityUrlTopicMap = resolveVanityUrl;
+    } catch (e) {
+        console.log(e);
+    }
+    console.log(`${SERVICE_NAME} Topics:
+        Sub: ${resolveVanityUrlTopicMap.sub},
+        Pub: ${resolveVanityUrlTopicMap.pub}`)
+
 
     // Create Redis Consumer and Producer Clients
     const consumer = new Redis.default({
@@ -26,8 +41,9 @@ export default fp(async function (fastify: FastifyInstance) {
     });
 
     // Subscribe to the topics
-    await consumer.subscribe(...topicsTest);
-    console.log(`Consumer subscribed to ${topicsTest.length} channels`);
+    await consumer.subscribe(...resolveVanityUrlTopicMap.sub, async (err, count) => {
+        console.log(`Consumer subscribed to ${count} channels`);
+    });
 
     // Set up message handling for each topic
     consumer.on('message', async (channel, message) => {
@@ -36,7 +52,9 @@ export default fp(async function (fastify: FastifyInstance) {
             const url = `http://localhost:65300/ISteamUser/ResolveVanityURL/v0001/?vanityurl=${payload.vanityurl}`;
             const { data } = await fastify.axios.get(url);
             const result: IResolveVanityUrlResult = data.response;
-            producer.publish('SGNOME/Steam/steamid', JSON.stringify(result));
+            resolveVanityUrlTopicMap.pub.forEach(topic =>
+                producer.publish(topic, JSON.stringify(result))
+            );
             console.log(`Received ${message} from ${channel}`);
         } catch (error) {
             console.error('Error fetching data:', error);

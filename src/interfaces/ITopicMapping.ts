@@ -1,4 +1,4 @@
 export interface ITopicMapping {
-    in: string[];
-    out: string[];
+    sub: string[];
+    pub: string[];
 }
