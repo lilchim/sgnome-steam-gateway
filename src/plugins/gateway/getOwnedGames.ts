@@ -7,20 +7,20 @@ import { ITopicMapping } from '../../interfaces/ITopicMapping.js';
 
 // Request Payload Interfaces
 interface RequestPayload {
-    vanityurl: string;
+    steamid: string;
 }
 
 interface ResponsePayload {
-    steamid: number;
+    data: any;
 }
 
 export default fp(async function (fastify: FastifyInstance) {
-    const SERVICE_NAME = "Service::resolveVanityUrl";
+    const SERVICE_NAME = "Service::getOwnedGames";
     let pubsubMapping: ITopicMapping = { sub: ['vanityurl'], pub: ['steamid'] } as ITopicMapping;
     try {
-        const { resolveVanityUrl }: any = await yaml.load(fs.readFileSync('./config/topic-map.yml', 'utf8'));
+        const { getOwnedGames }: any = await yaml.load(fs.readFileSync('./config/topic-map.yml', 'utf8'));
         console.log(`${SERVICE_NAME} loaded topic map from yml`);
-        pubsubMapping = resolveVanityUrl;
+        pubsubMapping = getOwnedGames;
     } catch (e) {
         console.log(e);
     }
@@ -50,7 +50,7 @@ export default fp(async function (fastify: FastifyInstance) {
         try {
             console.log(`${SERVICE_NAME}: Received ${message} from ${channel}`);
             const payload: RequestPayload = JSON.parse(message);
-            const url = `http://localhost:65300/ISteamUser/ResolveVanityURL/v0001/?vanityurl=${payload.vanityurl}`;
+            const url = `http://localhost:65300/IPlayerService/GetOwnedGames/v0001/?steamid=${payload.steamid}&include_appinfo=true&include_played_free_games=true&format=json`
             const { data } = await fastify.axios.get(url);
             const result: ResponsePayload = data.response;
             pubsubMapping.pub.forEach(topic => {
