@@ -31,12 +31,12 @@ export default fp(async function (fastify: FastifyInstance) {
 
     // Create Redis Consumer and Producer Clients
     const consumer = new Redis.default({
-        host: '127.0.0.1',
+        host: process.env.REDIS_HOST,
         // Add other Redis options if needed
     });
 
     const producer = new Redis.default({
-        host: '127.0.0.1',
+        host: process.env.REDIS_HOST,
         // Add other Redis options if needed
     });
 
@@ -50,7 +50,7 @@ export default fp(async function (fastify: FastifyInstance) {
         try {
             console.log(`${SERVICE_NAME}: Received ${message} from ${channel}`);
             const payload: RequestPayload = JSON.parse(message);
-            const url = `http://localhost:65300/ISteamUser/ResolveVanityURL/v0001/?vanityurl=${payload.vanityurl}`;
+            const url = `${process.env.STEAM_API_URL}/ISteamUser/ResolveVanityURL/v0001/?vanityurl=${payload.vanityurl}`;
             const { data } = await fastify.axios.get(url);
             const result: ResponsePayload = data.response;
             pubsubMapping.pub.forEach(topic => {
